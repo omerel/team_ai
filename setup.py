@@ -32,3 +32,25 @@ def validate_nickname(nickname: str, existing: set) -> None:
         raise NicknameError(
             f"nickname '{nickname}' is already taken by another agent"
         )
+
+
+SLUG_MAX_LEN = 40
+
+
+def slugify(text: str) -> str:
+    """Convert free-form text into a sprint folder slug.
+
+    Lowercase, alphanumeric and hyphens only, max 40 characters.
+    Falls back to 'sprint' when input has no usable characters.
+    """
+    lowered = text.lower()
+    # remove non-ascii characters
+    ascii_only = lowered.encode('ascii', 'ignore').decode('ascii')
+    # replace any non-[a-z0-9] with a hyphen
+    cleaned = re.sub(r"[^a-z0-9]+", "-", ascii_only)
+    cleaned = cleaned.strip("-")
+    if not cleaned:
+        return "sprint"
+    if len(cleaned) > SLUG_MAX_LEN:
+        cleaned = cleaned[:SLUG_MAX_LEN].rstrip("-")
+    return cleaned or "sprint"
