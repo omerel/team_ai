@@ -54,3 +54,25 @@ def slugify(text: str) -> str:
     if len(cleaned) > SLUG_MAX_LEN:
         cleaned = cleaned[:SLUG_MAX_LEN].rstrip("-")
     return cleaned or "sprint"
+
+
+from string import Template
+
+
+class RenderError(ValueError):
+    """Raised when a template references an unprovided variable."""
+
+
+def render_template(text: str, mapping: dict) -> str:
+    """Render a string.Template with the given mapping.
+
+    Raises RenderError if the template references a variable
+    not present in the mapping. Uses safe $var / ${var} syntax;
+    $$ is the literal-dollar escape.
+    """
+    try:
+        return Template(text).substitute(mapping)
+    except KeyError as e:
+        raise RenderError(f"template references undefined variable: {e}") from e
+    except ValueError as e:
+        raise RenderError(f"invalid template syntax: {e}") from e
