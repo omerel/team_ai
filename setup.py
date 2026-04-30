@@ -79,6 +79,7 @@ def render_template(text: str, mapping: dict) -> str:
 
 
 import argparse
+import shutil
 import sys
 from pathlib import Path
 
@@ -156,9 +157,119 @@ def main(argv=None) -> int:
     return scaffold_project(target, minimal=args.minimal, force=args.force)
 
 
-# Stubs — implemented in later tasks
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _render_roster_block(roster: dict) -> str:
+    """Render the team.md roster block from {role: nickname} mapping."""
+    lines = []
+    for role, nickname in roster.items():
+        desc = AGENTS[role][0]
+        lines.append(f"- **@{nickname}** — {role}: {desc}")
+    return "\n".join(lines)
+
+
+def _copy_dir(src: Path, dst: Path) -> None:
+    """Copy a directory tree, replacing dst if it exists."""
+    if dst.exists():
+        shutil.rmtree(dst)
+    shutil.copytree(src, dst)
+
+
 def scaffold_project(target: Path, minimal: bool = False, force: bool = False) -> int:
-    raise NotImplementedError("scaffold_project: implemented in Task 17")
+    """Scaffold a new team-ai project at `target`.
+
+    `minimal=True` skips the wizard and uses MINIMAL_AGENTS with default nicknames.
+    `force=True` removes any existing .claude/ at target before scaffolding.
+    Returns 0 on success.
+    """
+    claude_dir = target / ".claude"
+    if claude_dir.exists() and not force:
+        sys.stderr.write(
+            f"error: {claude_dir} already exists. Use --force to overwrite.\n"
+        )
+        sys.exit(1)
+    if claude_dir.exists() and force:
+        shutil.rmtree(claude_dir)
+
+    if minimal:
+        project_name = target.name
+        description = ""
+        roster = {role: AGENTS[role][1] for role in MINIMAL_AGENTS}
+    else:
+        project_name, description, roster = run_wizard(target)
+
+    target.mkdir(parents=True, exist_ok=True)
+    (target / "src").mkdir(exist_ok=True)
+    (target / "resource").mkdir(exist_ok=True)
+    (target / "sprints").mkdir(exist_ok=True)
+    (target / ".claude" / "agents").mkdir(parents=True, exist_ok=True)
+    (target / ".claude" / "commands").mkdir(exist_ok=True)
+    (target / ".claude" / "scripts").mkdir(exist_ok=True)
+
+    # Render CLAUDE.md
+    claude_tmpl = (TEMPLATE_DIR / "CLAUDE.md.tmpl").read_text()
+    (target / "CLAUDE.md").write_text(
+        render_template(claude_tmpl, {
+            "project_name": project_name,
+            "description": description or "(no description provided)",
+        })
+    )
+
+    # Render team.md
+    team_tmpl = (TEMPLATE_DIR / "claude" / "team.md.tmpl").read_text()
+    (target / ".claude" / "team.md").write_text(
+        render_template(team_tmpl, {
+            "project_name": project_name,
+            "roster_block": _render_roster_block(roster),
+        })
+    )
+
+    # Copy settings.json
+    shutil.copy(
+        TEMPLATE_DIR / "claude" / "settings.json",
+        target / ".claude" / "settings.json",
+    )
+
+    # Resource README
+    shutil.copy(
+        TEMPLATE_DIR / "resource_README.md",
+        target / "resource" / "README.md",
+    )
+
+    # Slash commands (no rendering — copy as-is)
+    cmd_src = TEMPLATE_DIR / "claude" / "commands"
+    cmd_dst = target / ".claude" / "commands"
+    for f in cmd_src.glob("*.md"):
+        shutil.copy(f, cmd_dst / f.name)
+
+    # Skills (verbatim copy)
+    _copy_dir(TEMPLATE_DIR / "claude" / "skills", target / ".claude" / "skills")
+
+    # Render each installed agent
+    for role, nickname in roster.items():
+        tmpl_path = TEMPLATE_DIR / "claude" / "agents" / f"{role}.md.tmpl"
+        if not tmpl_path.exists():
+            sys.stderr.write(f"error: missing agent template {tmpl_path}\n")
+            sys.exit(2)
+        rendered = render_template(tmpl_path.read_text(), {
+            "nickname": nickname,
+            "project_name": project_name,
+        })
+        (target / ".claude" / "agents" / f"{role}.md").write_text(rendered)
+
+    # Copy setup.py itself for in-place ops
+    shutil.copy(REPO_ROOT / "setup.py", target / ".claude" / "scripts" / "team_setup.py")
+
+    print(f"✓ Project scaffolded at {target}")
+    print("  Next: drop knowledge into resource/, then run /sprint-start \"<goal>\"")
+    return 0
+
+
+def run_wizard(target: Path):
+    """Stub — implemented in Task 18."""
+    raise NotImplementedError("run_wizard: implemented in Task 18")
 
 
 def list_team(project: Path) -> int:
