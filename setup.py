@@ -443,8 +443,57 @@ def rename_agent(project: Path, spec: str) -> int:
     return 0
 
 
-def add_agent(project: Path, role: str) -> int:
-    raise NotImplementedError("add_agent: implemented in Task 22")
+def add_agent(project: Path, spec: str) -> int:
+    """Add an agent to an existing project. Spec: 'role' or 'role=nickname'."""
+    _require_project(project)
+
+    if "=" in spec:
+        role, nickname = spec.split("=", 1)
+        role, nickname = role.strip(), nickname.strip()
+    else:
+        role = spec.strip()
+        nickname = None
+
+    if role not in AGENTS:
+        sys.stderr.write(
+            f"error: unknown role '{role}'. Known: {', '.join(sorted(AGENTS))}\n"
+        )
+        sys.exit(1)
+
+    roster = _read_team_roster(project)
+    if role in roster:
+        print(f"  @{roster[role]} ({role}) is already on the team. No change.")
+        return 0
+
+    used = set(roster.values())
+    if nickname is None:
+        default = AGENTS[role][1]
+        if default in used:
+            default = ""
+        nickname = _ask_nickname(role, default, used)
+    else:
+        try:
+            validate_nickname(nickname, existing=used)
+        except NicknameError as e:
+            sys.stderr.write(f"error: {e}\n")
+            sys.exit(1)
+
+    tmpl_path = TEMPLATE_DIR / "claude" / "agents" / f"{role}.md.tmpl"
+    if not tmpl_path.exists():
+        sys.stderr.write(f"error: missing agent template {tmpl_path}\n")
+        sys.exit(2)
+    project_name = _project_name(project)
+    rendered = render_template(tmpl_path.read_text(), {
+        "nickname": nickname,
+        "project_name": project_name,
+    })
+    (project / ".claude" / "agents" / f"{role}.md").write_text(rendered)
+
+    roster[role] = nickname
+    _write_team_md(project, project_name, roster)
+
+    print(f"✓ Added @{nickname} ({role}) to the team")
+    return 0
 
 
 def remove_agent(project: Path, nickname: str) -> int:
