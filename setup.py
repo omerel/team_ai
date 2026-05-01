@@ -364,8 +364,83 @@ def list_team(project: Path) -> int:
     return 0
 
 
+def _read_team_roster(project: Path) -> dict:
+    """Parse the @nickname → role mapping from .claude/team.md.
+
+    Returns dict of {role: nickname}. Looks for lines matching:
+    `- **@<nickname>** — <role>: <description>`
+    """
+    text = (project / ".claude" / "team.md").read_text()
+    roster = {}
+    pattern = re.compile(r"^\-\s+\*\*@([a-z0-9-]+)\*\*\s+—\s+([a-z0-9-]+):", re.MULTILINE)
+    for m in pattern.finditer(text):
+        nickname, role = m.group(1), m.group(2)
+        roster[role] = nickname
+    return roster
+
+
+def _write_team_md(project: Path, project_name: str, roster: dict) -> None:
+    team_tmpl = (TEMPLATE_DIR / "claude" / "team.md.tmpl").read_text()
+    (project / ".claude" / "team.md").write_text(
+        render_template(team_tmpl, {
+            "project_name": project_name,
+            "roster_block": _render_roster_block(roster),
+        })
+    )
+
+
+def _project_name(project: Path) -> str:
+    """Extract project name from the first line of CLAUDE.md (`# <name> — Team Workflow`)."""
+    text = (project / "CLAUDE.md").read_text()
+    m = re.match(r"^#\s+(.+?)\s+—", text)
+    return m.group(1) if m else project.name
+
+
 def rename_agent(project: Path, spec: str) -> int:
-    raise NotImplementedError("rename_agent: implemented in Task 21")
+    """Rename an agent: spec is 'old=new'."""
+    _require_project(project)
+    if "=" not in spec:
+        sys.stderr.write(f"error: --rename expects OLD=NEW, got '{spec}'\n")
+        sys.exit(1)
+    old, new = spec.split("=", 1)
+    old, new = old.strip(), new.strip()
+
+    roster = _read_team_roster(project)
+    role_to_rename = None
+    for role, nick in roster.items():
+        if nick == old:
+            role_to_rename = role
+            break
+    if role_to_rename is None:
+        sys.stderr.write(f"error: no agent with nickname '{old}'\n")
+        sys.exit(1)
+
+    existing = set(roster.values()) - {old}
+    try:
+        validate_nickname(new, existing=existing)
+    except NicknameError as e:
+        sys.stderr.write(f"error: {e}\n")
+        sys.exit(1)
+
+    agent_file = project / ".claude" / "agents" / f"{role_to_rename}.md"
+    if not agent_file.exists():
+        sys.stderr.write(f"error: agent file missing: {agent_file}\n")
+        sys.exit(2)
+    text = agent_file.read_text()
+    text = re.sub(r"^name:\s*" + re.escape(old) + r"\s*$", f"name: {new}", text, flags=re.MULTILINE)
+    text = re.sub(r"\b" + re.escape(old) + r"\b", new, text)
+    agent_file.write_text(text)
+
+    roster[role_to_rename] = new
+    _write_team_md(project, _project_name(project), roster)
+
+    for sprint_dir in (project / "sprints").glob("*/"):
+        wl = sprint_dir / "work-logs" / f"{old}.md"
+        if wl.is_file():
+            wl.rename(sprint_dir / "work-logs" / f"{new}.md")
+
+    print(f"✓ Renamed @{old} → @{new}")
+    return 0
 
 
 def add_agent(project: Path, role: str) -> int:
