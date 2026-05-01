@@ -497,7 +497,35 @@ def add_agent(project: Path, spec: str) -> int:
 
 
 def remove_agent(project: Path, nickname: str) -> int:
-    raise NotImplementedError("remove_agent: implemented in Task 23")
+    """Remove an agent by nickname. Refuses to remove core agents."""
+    _require_project(project)
+    nickname = nickname.strip()
+
+    roster = _read_team_roster(project)
+    role_to_remove = None
+    for role, nick in roster.items():
+        if nick == nickname:
+            role_to_remove = role
+            break
+    if role_to_remove is None:
+        sys.stderr.write(f"error: no agent with nickname '{nickname}'\n")
+        sys.exit(1)
+
+    if role_to_remove in CORE_AGENTS:
+        sys.stderr.write(
+            f"error: '{role_to_remove}' is a core agent and cannot be removed.\n"
+        )
+        sys.exit(1)
+
+    agent_file = project / ".claude" / "agents" / f"{role_to_remove}.md"
+    if agent_file.exists():
+        agent_file.unlink()
+
+    del roster[role_to_remove]
+    _write_team_md(project, _project_name(project), roster)
+
+    print(f"✓ Removed @{nickname} ({role_to_remove}) from the team")
+    return 0
 
 
 if __name__ == "__main__":
