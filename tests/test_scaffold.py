@@ -71,6 +71,22 @@ class TestScaffoldMinimal(unittest.TestCase):
         rc = scaffold_project(self.target, minimal=True, force=True)
         self.assertEqual(rc, 0)
 
+    def test_in_place_templates_bundled_without_skills(self):
+        """In-place ops (rename, add-agent) need templates next to the script.
+
+        Skills are NOT bundled here — they already live at .claude/skills/.
+        """
+        scaffold_project(self.target, minimal=True, force=False)
+        bundled = self.target / ".claude" / "scripts" / "template"
+        self.assertTrue((bundled / "CLAUDE.md.tmpl").is_file())
+        self.assertTrue((bundled / "claude" / "team.md.tmpl").is_file())
+        self.assertTrue((bundled / "claude" / "agents" / "planner.md.tmpl").is_file())
+        # All 12 agent templates available so --add-agent works for any role
+        agent_tmpls = list((bundled / "claude" / "agents").glob("*.md.tmpl"))
+        self.assertEqual(len(agent_tmpls), 12)
+        # Skills are NOT duplicated under scripts/template/
+        self.assertFalse((bundled / "claude" / "skills").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -262,6 +262,17 @@ def scaffold_project(target: Path, minimal: bool = False, force: bool = False) -
     # Copy setup.py itself for in-place ops
     shutil.copy(REPO_ROOT / "setup.py", target / ".claude" / "scripts" / "team_setup.py")
 
+    # Copy templates the in-place ops need (rename re-renders team.md;
+    # add-agent re-renders agent files). Exclude skills/ — already at
+    # .claude/skills/ — to avoid duplication.
+    template_dst = target / ".claude" / "scripts" / "template"
+    if template_dst.exists():
+        shutil.rmtree(template_dst)
+    shutil.copytree(
+        TEMPLATE_DIR, template_dst,
+        ignore=shutil.ignore_patterns("skills"),
+    )
+
     print(f"✓ Project scaffolded at {target}")
     print("  Next: drop knowledge into resource/, then run /sprint-start \"<goal>\"")
     return 0
