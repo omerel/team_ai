@@ -267,9 +267,83 @@ def scaffold_project(target: Path, minimal: bool = False, force: bool = False) -
     return 0
 
 
+def _ask(prompt: str, default: str = "") -> str:
+    """Prompt the user; return the answer or the default if blank."""
+    suffix = f" [{default}]" if default else ""
+    raw = input(f"{prompt}{suffix}: ").strip()
+    return raw or default
+
+
+def _ask_yes_no(prompt: str, default_no: bool = True) -> bool:
+    """Yes/no prompt. Returns True for yes, False for no."""
+    default = "n" if default_no else "y"
+    while True:
+        raw = input(f"{prompt} (y/n) [{default}]: ").strip().lower() or default
+        if raw in ("y", "yes"):
+            return True
+        if raw in ("n", "no"):
+            return False
+        print("  please answer y or n")
+
+
+def _ask_nickname(role: str, default: str, existing: set) -> str:
+    """Prompt for a nickname, retrying until validation passes."""
+    while True:
+        candidate = _ask(f"  Nickname for {role}", default=default)
+        try:
+            validate_nickname(candidate, existing=existing)
+            return candidate
+        except NicknameError as e:
+            print(f"  ✗ {e}")
+
+
 def run_wizard(target: Path):
-    """Stub — implemented in Task 18."""
-    raise NotImplementedError("run_wizard: implemented in Task 18")
+    """Interactive wizard. Returns (project_name, description, roster_dict)."""
+    print()
+    print("=" * 60)
+    print(" Team-AI scaffolder — interactive setup")
+    print("=" * 60)
+    print()
+
+    project_name = _ask("Project name", default=target.name)
+    description = _ask("One-line description", default="")
+
+    print()
+    print("Specialist selection — pick which agents to install.")
+    print("(Core agents 'planner' and 'reviewer' are always installed.)")
+    print()
+
+    installed_roles = list(CORE_AGENTS)
+    for role in AGENTS:
+        if role in CORE_AGENTS:
+            continue
+        desc = AGENTS[role][0]
+        print(f"  {role}: {desc}")
+        if _ask_yes_no(f"  Install {role}?", default_no=True):
+            installed_roles.append(role)
+        print()
+
+    print()
+    print("Nicknames — give each agent a name (or accept the default).")
+    print()
+    roster = {}
+    used = set()
+    for role in installed_roles:
+        default = AGENTS[role][1]
+        nickname = _ask_nickname(role, default, used)
+        roster[role] = nickname
+        used.add(nickname)
+
+    print()
+    print("Roster summary:")
+    for role, nickname in roster.items():
+        print(f"  @{nickname} — {role}")
+    print()
+    if not _ask_yes_no("Proceed with this roster?", default_no=False):
+        print("Aborted.")
+        sys.exit(1)
+
+    return project_name, description, roster
 
 
 def list_team(project: Path) -> int:
