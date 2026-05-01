@@ -346,8 +346,22 @@ def run_wizard(target: Path):
     return project_name, description, roster
 
 
+def _require_project(project: Path) -> Path:
+    """Verify `project` is a generated team-ai project. Returns path to team.md."""
+    team_md = project / ".claude" / "team.md"
+    if not team_md.is_file():
+        sys.stderr.write(
+            f"error: {project} is not a team-ai project (no .claude/team.md)\n"
+        )
+        sys.exit(1)
+    return team_md
+
+
 def list_team(project: Path) -> int:
-    raise NotImplementedError("list_team: implemented in Task 20")
+    """Print the team.md contents."""
+    team_md = _require_project(project)
+    print(team_md.read_text())
+    return 0
 
 
 def rename_agent(project: Path, spec: str) -> int:
