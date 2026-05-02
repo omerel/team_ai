@@ -32,11 +32,18 @@ class TestScaffoldMinimal(unittest.TestCase):
         self.assertTrue((self.target / ".claude" / "scripts" / "team_setup.py").is_file())
 
         # Slash commands
-        for cmd in ("sprint-start", "sprint-status", "sprint-close", "sprint-resume"):
+        for cmd in ("sprint-start", "sprint-status", "sprint-close",
+                    "sprint-resume", "sprint-board"):
             self.assertTrue(
                 (self.target / ".claude" / "commands" / f"{cmd}.md").is_file(),
                 f"missing command {cmd}",
             )
+
+        # Sprint-board generator
+        self.assertTrue((self.target / ".claude" / "scripts" / "board.py").is_file())
+        self.assertTrue(
+            (self.target / ".claude" / "scripts" / "sprint-board.template.html").is_file()
+        )
 
         # Agents (only MINIMAL set installed)
         agents_dir = self.target / ".claude" / "agents"

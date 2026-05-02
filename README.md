@@ -38,6 +38,14 @@ python3 .claude/scripts/team_setup.py --remove-agent rocky
 
 See `CLAUDE.md` inside any generated project for the full workflow.
 
+## Sprint board (offline kanban)
+
+Each scaffolded project includes a self-contained kanban view of the active sprint. From inside the project, run:
+
+    python3 .claude/scripts/board.py
+
+This writes `sprint-board.html` at the project root and opens it in your browser. The HTML inlines all CSS/JS — no network access needed. Re-run the script (or `/sprint-board` inside Claude Code) any time to refresh. With no active sprint, the board renders an empty state.
+
 ## Agent roster
 
 Core (always installed): `planner`, `reviewer`.
