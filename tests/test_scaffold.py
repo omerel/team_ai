@@ -88,9 +88,9 @@ class TestScaffoldMinimal(unittest.TestCase):
         self.assertTrue((bundled / "CLAUDE.md.tmpl").is_file())
         self.assertTrue((bundled / "claude" / "team.md.tmpl").is_file())
         self.assertTrue((bundled / "claude" / "agents" / "planner.md.tmpl").is_file())
-        # All 12 agent templates available so --add-agent works for any role
+        # All 13 agent templates available so --add-agent works for any role
         agent_tmpls = list((bundled / "claude" / "agents").glob("*.md.tmpl"))
-        self.assertEqual(len(agent_tmpls), 12)
+        self.assertEqual(len(agent_tmpls), 13)
         # Skills are NOT duplicated under scripts/template/
         self.assertFalse((bundled / "claude" / "skills").exists())
 

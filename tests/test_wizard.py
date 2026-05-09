@@ -28,7 +28,7 @@ class TestWizard(unittest.TestCase):
     def test_collects_minimal_answers_uses_defaults(self):
         answers = [""]
         answers += [""]
-        for _ in range(10):
+        for _ in range(11):
             answers.append("n")
         answers += ["", ""]
         answers.append("y")
@@ -43,7 +43,7 @@ class TestWizard(unittest.TestCase):
 
     def test_custom_nicknames_collected(self):
         answers = ["MyApp", "a cool app"]
-        for _ in range(10):
+        for _ in range(11):
             answers.append("n")
         answers += ["paula", "robin"]
         answers.append("y")
@@ -56,7 +56,7 @@ class TestWizard(unittest.TestCase):
 
     def test_rejects_invalid_nickname_then_accepts_valid(self):
         answers = ["", ""]
-        for _ in range(10):
+        for _ in range(11):
             answers.append("n")
         answers += ["Paula", "paula"]
         answers += [""]
@@ -68,15 +68,15 @@ class TestWizard(unittest.TestCase):
 
     def test_full_roster_when_user_says_yes(self):
         answers = ["", ""]
-        for _ in range(10):
+        for _ in range(11):
             answers.append("y")
-        for _ in range(12):
+        for _ in range(13):
             answers.append("")
         answers.append("y")
         self._scripted_input(answers)
         with redirect_stdout(StringIO()):
             _, _, roster = run_wizard(self.target)
-        self.assertEqual(len(roster), 12)
+        self.assertEqual(len(roster), 13)
 
 
 if __name__ == "__main__":

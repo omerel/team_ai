@@ -101,6 +101,7 @@ AGENTS = {
     "documenter": ("READMEs, API docs, user guides, changelog.", "documenter"),
     "data-ml-engineer": ("Data pipelines and ML model code paths.", "ml"),
     "security-reviewer": ("Audits code for security risks.", "security"),
+    "fastmcp-builder": ("Interactively builds FastMCP STDIO servers and registers them via committed .mcp.json.", "fastmcp-builder"),
 }
 
 CORE_AGENTS = ("planner", "reviewer")
@@ -175,6 +176,16 @@ def _copy_dir(src: Path, dst: Path) -> None:
     if dst.exists():
         shutil.rmtree(dst)
     shutil.copytree(src, dst)
+
+
+def _install_fastmcp_builder(project: Path) -> None:
+    """Vendor the fastmcp_builder helper package into .claude/scripts/.
+
+    Required by the fastmcp-builder agent at runtime. Stdlib-only.
+    """
+    src = TEMPLATE_DIR / "claude" / "scripts" / "fastmcp_builder"
+    dst = project / ".claude" / "scripts" / "fastmcp_builder"
+    _copy_dir(src, dst)
 
 
 def scaffold_project(target: Path, minimal: bool = False, force: bool = False) -> int:
@@ -271,15 +282,25 @@ def scaffold_project(target: Path, minimal: bool = False, force: bool = False) -
         scripts_dst / "sprint-board.template.html",
     )
 
+    # Vendor the fastmcp_builder helper package if that agent is on the team.
+    if "fastmcp-builder" in roster:
+        _install_fastmcp_builder(target)
+
     # Copy templates the in-place ops need (rename re-renders team.md;
     # add-agent re-renders agent files). Exclude skills/ (already at
     # .claude/skills/) and scripts/ (board.py is copied directly above).
     template_dst = target / ".claude" / "scripts" / "template"
     if template_dst.exists():
         shutil.rmtree(template_dst)
+    # We exclude skills/ (already at .claude/skills/) and the scripts files
+    # that are copied verbatim above (board.py, sprint-board template). The
+    # fastmcp_builder/ package under scripts/ is intentionally kept so that
+    # in-place `--add-agent fastmcp-builder` can vendor it from here.
     shutil.copytree(
         TEMPLATE_DIR, template_dst,
-        ignore=shutil.ignore_patterns("skills", "scripts"),
+        ignore=shutil.ignore_patterns(
+            "skills", "board.py", "sprint-board.template.html", "__pycache__",
+        ),
     )
 
     print(f"✓ Project scaffolded at {target}")
@@ -512,6 +533,9 @@ def add_agent(project: Path, spec: str) -> int:
     roster[role] = nickname
     _write_team_md(project, project_name, roster)
 
+    if role == "fastmcp-builder":
+        _install_fastmcp_builder(project)
+
     print(f"✓ Added @{nickname} ({role}) to the team")
     return 0
 
@@ -540,6 +564,11 @@ def remove_agent(project: Path, nickname: str) -> int:
     agent_file = project / ".claude" / "agents" / f"{role_to_remove}.md"
     if agent_file.exists():
         agent_file.unlink()
+
+    if role_to_remove == "fastmcp-builder":
+        pkg_dir = project / ".claude" / "scripts" / "fastmcp_builder"
+        if pkg_dir.exists():
+            shutil.rmtree(pkg_dir)
 
     del roster[role_to_remove]
     _write_team_md(project, _project_name(project), roster)

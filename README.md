@@ -54,7 +54,8 @@ Specialists (installed via wizard or `--add-agent`):
 - `researcher`, `architect`, `implementer`,
 - `backend-specialist`, `frontend-specialist`, `qa-engineer`,
 - `devops`, `documenter`,
-- `data-ml-engineer`, `security-reviewer`.
+- `data-ml-engineer`, `security-reviewer`,
+- `fastmcp-builder` — interactively builds FastMCP STDIO servers; vendors `.claude/scripts/fastmcp_builder/` (stdlib-only) and registers via committed `.mcp.json`. Drive it with the `/build-mcp` slash command.
 
 ## Bundled skills
 
