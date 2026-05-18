@@ -66,12 +66,11 @@ Validate it matches `[a-z][a-z0-9-]*`. Save as `INVOCATION_NAME`.
 
 ### Step 5 — Interview about data
 
-Ask these questions one at a time (do NOT batch):
+Ask these questions one at a time (do NOT batch). Do NOT ask the user which fields are required — that is discovered in Step 6 by running the example and then confirmed with the user in Step 6a-bis.
 
 1. `What database does your API run against?` → save as `DB`
 2. `Which table are we pulling data from?` → save as `TABLE`
-3. `Which fields are required in the request payload?` → save as `REQUIRED_FIELDS` (free-text — confirmed by probing in Step 6)
-4. `How would a typical user phrase a question that requires calling this API? Give 1-3 examples (in whatever language your users speak).` → save as `EXAMPLE_QUESTIONS` (used in `spec.json.tools[].examples` — may be Hebrew or any other language; preserve as-is)
+3. `How would a typical user phrase a question that requires calling this API? Give 1-3 examples (in whatever language your users speak).` → save as `EXAMPLE_QUESTIONS` (used in `spec.json.tools[].examples` — may be Hebrew or any other language; preserve as-is)
 
 Echo the collected answers back in a short English summary before moving on, so the user can catch mistakes early.
 
@@ -86,6 +85,20 @@ python <example_file_path>
 ```
 - If the script exits 0 and prints a JSON-looking body → record status, row count, field names. Count as probe 1/5.
 - If the script fails with a connection error → halt, send `Could not connect to the API. Make sure the server is running and try again.` Do NOT retry silently.
+
+#### 6a-bis. Confirm parameters with the user
+
+**This step must happen before any mutations (6b) and before asking the user about anything else.** Goal: surface every parameter the example actually uses, and have the user explicitly tell us which are mandatory vs optional.
+
+1. Build `DISCOVERED_PARAMS`: the union of keys in `SEED_PAYLOAD` (from Step 2) and any query-string / body keys actually sent during the baseline run. For each key, record the example value and infer the type (`int`, `str`, `float`, `bool`, `datetime`).
+2. Send the user a numbered English list, one parameter per line, in this exact shape:
+   > Here are the parameters I found by running your example:
+   > 1. `<name>` (type: `<type>`, example: `<value>`)
+   > 2. ...
+   >
+   > For each one, tell me if it is **mandatory** or **optional**. You can answer like: `1 mandatory, 2 optional, 3 mandatory` or `all mandatory except 3`. If you want to add a parameter I missed, tell me its name, type, and whether it is mandatory.
+3. Parse the user's reply into a dict `USER_REQUIRED_MAP: {name: bool}`. If the reply is ambiguous (does not cover every parameter, or uses words you can't map to mandatory/optional), ask once more: `I couldn't map your answer to every parameter. Please answer mandatory/optional for each of: <list of unresolved names>.` Hard cap 2 clarification rounds; then halt and ask the user to restate.
+4. Echo the final mapping back as a short English summary, e.g. `Got it — mandatory: [a, b]; optional: [c, d]. I'll use this to build QueryInput.` and treat `USER_REQUIRED_MAP` as the authoritative source for `required=` in Step 6c (the probing in 6b only refines descriptions and constraints, it does not override the user's choice).
 
 #### 6b. Run 4 mutations
 For each mutation, build a Python one-liner that calls `requests.request(SEED_METHOD, SEED_URL, headers=SEED_HEADERS, json=<mutated_payload>)` and prints `status_code` + `len(response.json())` + `list(response.json()[0].keys()) if response.json() else []`. Execute via Bash. The 4 mutations:
@@ -104,12 +117,12 @@ Do NOT dump full response bodies to the user.
 
 #### 6c. Synthesize schema
 Build in memory:
-- `QUERY_INPUT_FIELDS`: list of `(name, type, required, description, constraints)` tuples for each input field. Mark `required=False` if any successful probe omitted it. Constraints: `ge`/`le` from observed numeric range, enum if ≤5 distinct values observed. Field descriptions should be in English.
+- `QUERY_INPUT_FIELDS`: list of `(name, type, required, description, constraints)` tuples for each input field. Set `required` from `USER_REQUIRED_MAP` (Step 6a-bis) — the user's choice is authoritative. Constraints: `ge`/`le` from observed numeric range, enum if ≤5 distinct values observed. Field descriptions should be in English.
 - `ROW_FIELDS`: list of `(name, type)` tuples. Type inferred from observed values across all 2xx responses (use `str` as fallback for mixed types).
 - `FIELD_CONSTRAINTS_JSON` and `EDGE_CASES_JSON` for `spec.json`.
 
 #### 6d. Surface uncertainty
-For any field that appeared in only some 2xx responses, send: `Field <name> appeared in X/N responses — I'll treat it as optional.`
+For any field whose probe-observed required-ness disagrees with the user's choice in `USER_REQUIRED_MAP`, send: `Note: field <name> was marked <user_choice> but the API <accepted/rejected> requests without it. Keeping your choice.` Do NOT override the user.
 
 #### 6e. Guardrails
 - Hard cap 8 total probes (5 + 3 retries on transient errors).
