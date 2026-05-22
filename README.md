@@ -30,7 +30,7 @@ python3 .claude/scripts/team_setup.py --remove-agent rocky
 ## Sprint workflow (in a generated project)
 
 1. Drop knowledge into `resource/`.
-2. Run `/sprint-start "your goal"`.
+2. Run `/sprint-start "your goal"` — this also creates a `sprint/<slug>` git branch for the sprint.
 3. The Planner drafts `sprints/<date>_<slug>/plan.md` — review and approve.
 4. Specialists execute tasks; each appends to its work-log.
 5. Run `/sprint-close` — the Reviewer writes the Sprint Closeout.
@@ -46,6 +46,23 @@ Each scaffolded project includes a self-contained kanban view of the active spri
 
 This writes `sprint-board.html` at the project root and opens it in your browser. The HTML inlines all CSS/JS — no network access needed. Re-run the script (or `/sprint-board` inside Claude Code) any time to refresh. With no active sprint, the board renders an empty state.
 
+## Git workflow
+
+Agents commit their own work. Every agent commit is attributed with an
+`@<nickname>:` subject prefix (e.g. `@rocky: fix pagination off-by-one`) so you
+can see which teammate authored each commit on your git account. `/sprint-start`
+opens a `sprint/<slug>` branch; `/sprint-close` reports that branch and suggests
+next steps without merging automatically.
+
+### Quick fix
+
+For small changes that don't need a full sprint:
+
+    /quick-fix "correct off-by-one in pagination" @rocky
+
+One agent makes the change, commits it on the current branch, and writes a record
+to `fixes/<YYYY-MM-DD>_<slug>.md`. No planner, reviewer, branch, or approval gates.
+
 ## Agent roster
 
 Core (always installed): `planner`, `reviewer`.
@@ -60,6 +77,9 @@ Specialists (installed via wizard or `--add-agent`):
 
 The template vendors 12 superpowers skills into `.claude/skills/`:
 `test-driven-development`, `systematic-debugging`, `verification-before-completion`, `writing-plans`, `executing-plans`, `subagent-driven-development`, `dispatching-parallel-agents`, `requesting-code-review`, `receiving-code-review`, `brainstorming`, `frontend-design`, `finishing-a-development-branch`.
+
+The template also bundles one custom project skill, `using-git`, which defines the
+commit-attribution convention agents follow.
 
 ## Manual smoke test (run before tagging a release)
 
