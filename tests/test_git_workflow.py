@@ -122,5 +122,14 @@ class TestAgentGitWiring(unittest.TestCase):
             shutil.rmtree(tmp, ignore_errors=True)
 
 
+class TestSprintStartBranch(unittest.TestCase):
+    def test_sprint_start_creates_branch(self):
+        cmd = (
+            REPO_ROOT / "template" / "claude" / "commands" / "sprint-start.md"
+        ).read_text()
+        self.assertIn("git checkout -b sprint/", cmd)
+        self.assertIn(".git", cmd)  # non-git-repo guard documented
+
+
 if __name__ == "__main__":
     unittest.main()
