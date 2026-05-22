@@ -36,5 +36,31 @@ class TestUsingGitSkill(unittest.TestCase):
         self.assertIn("@<your-nickname>", text)
 
 
+class TestGitPermissions(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.target = _scaffold(self.tmp)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_settings_allow_git_commands(self):
+        settings = json.loads(
+            (self.target / ".claude" / "settings.json").read_text()
+        )
+        allow = settings["permissions"]["allow"]
+        for entry in (
+            "Bash(git add:*)",
+            "Bash(git commit:*)",
+            "Bash(git status:*)",
+            "Bash(git diff:*)",
+            "Bash(git log:*)",
+            "Bash(git checkout:*)",
+            "Bash(git branch:*)",
+            "Bash(git switch:*)",
+        ):
+            self.assertIn(entry, allow, f"missing permission {entry}")
+
+
 if __name__ == "__main__":
     unittest.main()
