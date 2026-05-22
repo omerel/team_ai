@@ -62,5 +62,23 @@ class TestGitPermissions(unittest.TestCase):
             self.assertIn(entry, allow, f"missing permission {entry}")
 
 
+class TestQuickFixCommand(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.target = _scaffold(self.tmp)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_quick_fix_command_present(self):
+        cmd = self.target / ".claude" / "commands" / "quick-fix.md"
+        self.assertTrue(cmd.is_file())
+        text = cmd.read_text()
+        # documents the fixes/ record, attribution, and current-branch commit
+        self.assertIn("fixes/", text)
+        self.assertIn("@<nickname>:", text)
+        self.assertIn("current branch", text)
+
+
 if __name__ == "__main__":
     unittest.main()
