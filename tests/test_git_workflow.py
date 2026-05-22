@@ -140,5 +140,22 @@ class TestSprintCloseBranch(unittest.TestCase):
         self.assertIn("do not merge", cmd.lower())
 
 
+class TestClaudeMdGitDocs(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.target = _scaffold(self.tmp)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_claude_md_documents_git_workflow(self):
+        text = (self.target / "CLAUDE.md").read_text()
+        self.assertIn("/quick-fix", text)
+        self.assertIn("Git & Version Control", text)
+        self.assertIn("sprint/<slug>", text)
+        self.assertIn("fixes/", text)
+        self.assertIn("@<nickname>:", text)
+
+
 if __name__ == "__main__":
     unittest.main()

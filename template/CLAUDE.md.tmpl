@@ -16,6 +16,7 @@ A **sprint** is a goal-oriented work unit with no fixed length. The guide states
 - `/sprint-status` — Print current sprint progress (% done, current task, blockers, last 3 log entries).
 - `/sprint-close` — Dispatch the Reviewer, write the Sprint Closeout in `plan.md`. Refuse if any task is `pending` or `in_progress`.
 - `/sprint-resume` — Read `sprints/.active` (or most recent folder by mtime), summarize state, ask the guide whether to continue.
+- `/quick-fix "<description>" [@nickname]` — Make a small, documented change without a full sprint. One agent edits, commits on the current branch, and writes a record under `fixes/`.
 
 ### Approval gates
 Two points where the guide is in control:
@@ -110,8 +111,46 @@ Append-only. New entries go at the bottom. Header for each entry:
 ## <ISO timestamp> — Task <task-id>
 ```
 
+### Quick-fix records
+Quick fixes are recorded one file per fix at `fixes/<YYYY-MM-DD>_<slug>.md` (slug
+rules as above). They are independent of sprints and need no plan or work-log.
+
 ---
 
 ## 6. Team Roster
 
 See [`.claude/team.md`](.claude/team.md) for the live nickname → role roster. Always reference teammates by nickname (e.g., `@nickname`).
+
+---
+
+## 7. Git & Version Control
+
+### Commit attribution
+Every commit an agent makes MUST start its subject with the agent's nickname:
+`@<nickname>: <imperative summary>` (e.g. `@rocky: fix pagination off-by-one`).
+Because all commits land on the guide's git identity, this prefix is how the
+guide tells which teammate authored each commit. Agents follow the `using-git`
+skill for this.
+
+### Sprint branches
+`/sprint-start` creates and switches to a `sprint/<slug>` branch (same slug as the
+sprint folder). All sprint work is committed there. In a non-git directory, branch
+creation is skipped with a warning. `/sprint-close` reports the branch name and
+suggests next steps (merge / PR / keep) but does **not** merge automatically.
+
+### Quick fixes
+`/quick-fix "<description>" [@nickname]` records a small change in
+`fixes/<YYYY-MM-DD>_<slug>.md` with this format:
+
+```
+# Quick Fix: <description>
+**By:** @<nickname>
+**Date:** <ISO date>
+**Commit:** <sha>
+
+## Change
+<what changed and why>
+
+## Result
+<tests run / observed outcome>
+```
