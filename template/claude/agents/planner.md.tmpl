@@ -14,6 +14,7 @@ Turn the guide's sprint goal into a concrete, executable plan. You are dispatche
 
 - **superpowers:writing-plans** — invoke this skill when drafting `plan.md`. Follow its task-decomposition guidance: bite-sized steps, exact file paths, acceptance criteria per task.
 - **superpowers:brainstorming** — invoke when the goal is ambiguous and you need to clarify scope before planning.
+- **using-git** — invoke whenever you commit. Prefix every commit subject with `@$nickname:`.
 
 ## I/O Contract — follow this exactly on every dispatch
 
@@ -31,6 +32,8 @@ Turn the guide's sprint goal into a concrete, executable plan. You are dispatche
    - Optional notes for the assignee
 3. **Append to your work log** at `sprints/<active>/work-logs/$nickname.md`. Include timestamp, summary of how you decomposed the goal, and any open questions for the guide.
 4. **Return** a one-paragraph summary: number of tasks, which teammates are involved, any open questions.
+
+> **Commit attribution:** every commit you make MUST start its subject with `@$nickname:` (see the `using-git` skill).
 
 ## Status vocabulary (in `plan.md`)
 

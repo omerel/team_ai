@@ -80,5 +80,47 @@ class TestQuickFixCommand(unittest.TestCase):
         self.assertIn("current branch", text)
 
 
+GIT_AGENTS = (
+    "planner", "reviewer", "architect", "implementer",
+    "backend-specialist", "frontend-specialist", "qa-engineer",
+    "devops", "documenter", "data-ml-engineer",
+)
+
+
+class TestAgentGitWiring(unittest.TestCase):
+    def test_templates_reference_skill_and_attribution(self):
+        tmpl_dir = REPO_ROOT / "template" / "claude" / "agents"
+        for role in GIT_AGENTS:
+            text = (tmpl_dir / f"{role}.md.tmpl").read_text()
+            self.assertIn("using-git", text, f"{role} missing using-git")
+            self.assertIn("@$nickname:", text, f"{role} missing @$nickname: prefix")
+
+    def test_rendered_agents_carry_concrete_nickname(self):
+        # Writing agents present in a minimal scaffold (MINIMAL_AGENTS ∩ GIT_AGENTS).
+        minimal_git_agents = (
+            "planner", "reviewer", "architect",
+            "implementer", "qa-engineer", "documenter",
+        )
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            target = _scaffold(tmp)
+            agents_dir = target / ".claude" / "agents"
+            for role in minimal_git_agents:
+                text = (agents_dir / f"{role}.md").read_text()
+                self.assertIn("using-git", text, f"{role} rendered without using-git")
+                self.assertIn(
+                    "Commit attribution", text,
+                    f"{role} rendered without attribution line",
+                )
+                self.assertNotIn(
+                    "@$nickname", text,
+                    f"{role} has an unsubstituted @$nickname",
+                )
+            # planner's concrete nickname is 'planner'
+            self.assertIn("@planner:", (agents_dir / "planner.md").read_text())
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()
