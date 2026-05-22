@@ -131,5 +131,14 @@ class TestSprintStartBranch(unittest.TestCase):
         self.assertIn(".git", cmd)  # non-git-repo guard documented
 
 
+class TestSprintCloseBranch(unittest.TestCase):
+    def test_sprint_close_reports_branch_without_merging(self):
+        cmd = (
+            REPO_ROOT / "template" / "claude" / "commands" / "sprint-close.md"
+        ).read_text()
+        self.assertIn("sprint branch", cmd.lower())
+        self.assertIn("do not merge", cmd.lower())
+
+
 if __name__ == "__main__":
     unittest.main()
