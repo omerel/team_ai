@@ -1,9 +1,9 @@
 ---
-name: mcp-builder
+name: mcp-rest-builder
 description: Use when the user wants to build a FastMCP server that wraps an existing REST API and exposes its data through Claude Code. Triggers on requests like "build an MCP", "fastmcp", "wrap REST as MCP". The skill conducts the entire workflow in English (CLI does not render Hebrew correctly).
 ---
 
-# mcp-builder
+# mcp-rest-builder
 
 Build a FastMCP server that wraps an existing REST API. The user interacts in English throughout (the CLI does not render Hebrew correctly — it appears reversed).
 
@@ -50,9 +50,8 @@ Ask: `What name do you want for the MCP server? (e.g. taxi, weather)`
 
 Validate the answer is a single lowercase ASCII word (`[a-z][a-z0-9_]*`). If not, ask again with an English explanation. Save as `NAME`.
 
-Derive and save two further names from `NAME` for use by Steps 7-9:
+Derive and save one further name from `NAME` for use by Steps 7-9:
 - `TOOL_NAME = "query_" + NAME` (e.g. `query_taxi`) — Python function name; must match `[a-z][a-z0-9_]*`.
-- `ROW_CLASS_NAME = NAME.title() + "Row"` (e.g. `TaxiRow`) — Pydantic class name for response rows. If `NAME` contains underscores, also strip them: `NAME.title().replace("_", "")`.
 
 Then check: does `mcp_code/mcp_service_<NAME>/` already exist?
 - If yes, ask: `The folder mcp_code/mcp_service_{{NAME}}/ already exists. Do you want to: 1) delete and rewrite, 2) add a suffix, 3) cancel?` Handle accordingly (option 2 → suffix `_v2`, `_v3`, etc.).
@@ -118,8 +117,9 @@ Do NOT dump full response bodies to the user.
 #### 6c. Synthesize schema
 Build in memory:
 - `QUERY_INPUT_FIELDS`: list of `(name, type, required, description, constraints)` tuples for each input field. Set `required` from `USER_REQUIRED_MAP` (Step 6a-bis) — the user's choice is authoritative. Constraints: `ge`/`le` from observed numeric range, enum if ≤5 distinct values observed. Field descriptions should be in English.
-- `ROW_FIELDS`: list of `(name, type)` tuples. Type inferred from observed values across all 2xx responses (use `str` as fallback for mixed types).
 - `FIELD_CONSTRAINTS_JSON` and `EDGE_CASES_JSON` for `spec.json`.
+
+The tool returns the raw `resp.json()` payload from the REST API, so no response-row Pydantic model is generated. Still capture observed response field names/types for `OUTPUT_SCHEMA_JSON` and the plan summary in Step 7.
 
 #### 6d. Surface uncertainty
 For any field whose probe-observed required-ness disagrees with the user's choice in `USER_REQUIRED_MAP`, send: `Note: field <name> was marked <user_choice> but the API <accepted/rejected> requests without it. Keeping your choice.` Do NOT override the user.
@@ -139,9 +139,9 @@ Send the user a plan summary with these exact sections:
 Build plan:
 - MCP name: {{INVOCATION_NAME}}
 - Folder: mcp_code/mcp_service_{{NAME}}/
-- Tool: {{TOOL_NAME}}(input: QueryInput) -> list[{{ROW_CLASS_NAME}}]
+- Tool: {{TOOL_NAME}}(input: QueryInput) -> Any  # returns resp.json() as-is
 - Input fields: <list of (name, type, required) from probing>
-- Output fields: <list of (name, type) from probing>
+- Output fields (observed from probing, not enforced): <list of (name, type) from probing>
 - 3 tests: happy / edge / validation
 ```
 
@@ -163,9 +163,9 @@ Render each template in `references/` by reading it and replacing `{{PLACEHOLDER
 Substitution rules:
 - All user-supplied strings (descriptions, example questions): pass through unchanged (UTF-8) — may contain Hebrew or any other language.
 - All `*_JSON` placeholders in `spec.json.template`: pre-serialize the Python value with `json.dumps(value, ensure_ascii=False)` before substitution.
-- `{{QUERY_INPUT_FIELDS}}` and `{{ROW_FIELDS}}`: emit one line per field, 4-space indented, ending with `\n`.
+- `{{QUERY_INPUT_FIELDS}}`: emit one line per field, 4-space indented, ending with `\n`.
 - `INPUT_SCHEMA_JSON`: build a JSON Schema object from `QUERY_INPUT_FIELDS`. Shape: `{"type": "object", "properties": {<field>: {<type+constraints>}, ...}, "required": [<names of required fields>]}`. Map Pydantic types to JSON Schema: `int` → `"integer"`, `str` → `"string"`, `float` → `"number"`, `bool` → `"boolean"`, `datetime` → `{"type": "string", "format": "date-time"}`. Include `ge`/`le`/enum constraints if observed during probing. Pre-serialize with `json.dumps(schema, ensure_ascii=False)` before substitution.
-- `OUTPUT_SCHEMA_JSON`: `{"type": "array", "items": <object schema built from ROW_FIELDS using the same type mapping>}`. Pre-serialize with `json.dumps(..., ensure_ascii=False)`.
+- `OUTPUT_SCHEMA_JSON`: describes the observed response shape only (not enforced by the tool). Build `{"type": "array", "items": <object schema built from observed response field names/types using the same type mapping>}` when the API returned a list of objects; otherwise emit a minimal schema (e.g. `{"type": "object"}` or `{}`). Pre-serialize with `json.dumps(..., ensure_ascii=False)`.
 - `BASE_URL` ← `SEED_URL` (extracted in Step 2).
 - `HEADERS_JSON` ← `json.dumps(SEED_HEADERS, ensure_ascii=False)`.
 - `EXAMPLES_JSON` ← `json.dumps([{"question": q, "input": SEED_PAYLOAD} for q in EXAMPLE_QUESTIONS], ensure_ascii=False)`.

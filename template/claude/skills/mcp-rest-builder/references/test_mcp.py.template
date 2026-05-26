@@ -9,7 +9,7 @@ import asyncio
 import pytest
 from pydantic import ValidationError
 
-from mcp_code.mcp_service_{{NAME}}.pydantic_models import QueryInput, {{ROW_CLASS_NAME}}
+from mcp_code.mcp_service_{{NAME}}.pydantic_models import QueryInput
 from mcp_code.mcp_service_{{NAME}}.tools import register_tools
 from fastmcp import FastMCP
 
@@ -33,15 +33,13 @@ def _call(tool_name, payload):
 def test_happy_path():
     """{{HAPPY_DESCRIPTION}}"""
     result = _call("{{TOOL_NAME}}", {{HAPPY_PAYLOAD_JSON}})
-    assert isinstance(result, list)
-    assert len(result) >= 1
-    assert isinstance(result[0], {{ROW_CLASS_NAME}})
+    assert result is not None
 
 
 def test_edge_case():
     """{{EDGE_DESCRIPTION}}"""
     result = _call("{{TOOL_NAME}}", {{EDGE_PAYLOAD_JSON}})
-    assert isinstance(result, list)
+    assert result is not None
 
 
 def test_validation_error_before_http():

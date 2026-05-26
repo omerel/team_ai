@@ -1,4 +1,4 @@
-# English Phrasebook for mcp-builder
+# English Phrasebook for mcp-rest-builder
 
 Use these strings verbatim when talking to the user. They are tuned for clarity and consistency. Do not paraphrase.
 

@@ -14,10 +14,3 @@ from pydantic import BaseModel, Field
 class QueryInput(BaseModel):
     """Input for the {{TOOL_NAME}} tool."""
 {{QUERY_INPUT_FIELDS}}
-
-
-class {{ROW_CLASS_NAME}}(BaseModel):
-    """A row in the response from {{INVOCATION_NAME}}."""
-{{ROW_FIELDS}}
-
-    model_config = {"extra": "allow"}
