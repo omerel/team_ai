@@ -90,5 +90,45 @@ class TestObsidianEnabled(unittest.TestCase):
         self.assertIn(".vault-meta/", gi)
 
 
+from setup import add_obsidian
+
+
+class TestObsidianInPlace(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.target = self.tmp / "proj"
+        scaffold_project(self.target, minimal=True, force=False)  # plain
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_add_obsidian_matches_with_obsidian(self):
+        rc = add_obsidian(self.target)
+        self.assertEqual(rc, 0)
+        c = self.target / ".claude"
+        self.assertTrue((c / "skills" / "wiki" / "SKILL.md").is_file())
+        self.assertTrue((c / "commands" / "wiki.md").is_file())
+        self.assertTrue((c / "agents" / "verifier.md").is_file())
+        self.assertTrue((self.target / "wiki" / "hot.md").is_file())
+        settings = json.loads((c / "settings.json").read_text())
+        self.assertEqual(set(settings["hooks"]),
+                         {"SessionStart", "PostCompact", "Stop"})
+        self.assertIn("Knowledge Vault", (self.target / "CLAUDE.md").read_text())
+        self.assertIn("obsidian:module:start",
+                      (self.target / "CLAUDE.md").read_text())
+
+    def test_add_obsidian_is_idempotent(self):
+        add_obsidian(self.target)
+        claude_once = (self.target / "CLAUDE.md").read_text()
+        settings_once = (self.target / ".claude" / "settings.json").read_text()
+        add_obsidian(self.target)  # run again
+        claude_twice = (self.target / "CLAUDE.md").read_text()
+        settings_twice = (self.target / ".claude" / "settings.json").read_text()
+        self.assertEqual(claude_once.count("obsidian:module:start"),
+                         claude_twice.count("obsidian:module:start"))
+        self.assertEqual(claude_once, claude_twice)
+        self.assertEqual(settings_once, settings_twice)
+
+
 if __name__ == "__main__":
     unittest.main()

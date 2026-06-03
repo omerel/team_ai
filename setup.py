@@ -217,6 +217,48 @@ def apply_obsidian_module(target: Path) -> None:
         gitignore.write_text(existing + prefix + addition)
 
 
+OBSIDIAN_MARKER_START = "<!-- obsidian:module:start -->"
+
+
+def _inject_snippet(file_path: Path, snippet_file: str) -> None:
+    """Append a marker-wrapped snippet to file_path if not already present.
+
+    Idempotent: a file already containing the start marker is left untouched.
+    """
+    if not file_path.is_file():
+        return
+    text = file_path.read_text()
+    if OBSIDIAN_MARKER_START in text:
+        return
+    snippet = (OBSIDIAN_DIR / "snippets" / snippet_file).read_text()
+    sep = "" if text.endswith("\n") else "\n"
+    file_path.write_text(text + sep + snippet.rstrip("\n") + "\n")
+
+
+def add_obsidian(project: Path) -> int:
+    """In-place: add the Obsidian module to an already-scaffolded project."""
+    _require_project(project)
+    apply_obsidian_module(project)
+
+    # Inject awareness blocks into the already-rendered files.
+    _inject_snippet(project / "CLAUDE.md", "claude-section.md")
+    _inject_snippet(project / ".claude" / "team.md", "team.md")
+    roster = _read_team_roster(project)
+    agent_snippets = {
+        "researcher": "researcher.md",
+        "reviewer": "reviewer.md",
+        "planner": "planner-implementer.md",
+        "implementer": "planner-implementer.md",
+    }
+    for role, snippet in agent_snippets.items():
+        if role in roster:
+            _inject_snippet(project / ".claude" / "agents" / f"{role}.md", snippet)
+
+    print("✓ Obsidian module added to the project")
+    print("  Run `.claude/scripts/setup-vault.sh` to wire up the Obsidian app.")
+    return 0
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -236,6 +278,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--rename", metavar="OLD=NEW", help="Rename an agent nickname")
     p.add_argument("--add-agent", metavar="ROLE", help="Add an agent by role")
     p.add_argument("--remove-agent", metavar="NICKNAME", help="Remove an agent by nickname")
+    p.add_argument("--add-obsidian", action="store_true",
+                   help="Add the Obsidian module to an existing project (in-place)")
     return p
 
 
@@ -243,7 +287,7 @@ def main(argv=None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
-    in_place_flags = (args.list_team, args.rename, args.add_agent, args.remove_agent)
+    in_place_flags = (args.list_team, args.rename, args.add_agent, args.remove_agent, args.add_obsidian)
     if any(in_place_flags):
         # In-place ops use cwd as the project root unless target is given.
         project = Path(args.target).resolve() if args.target else Path.cwd()
@@ -255,6 +299,8 @@ def main(argv=None) -> int:
             return add_agent(project, args.add_agent)
         if args.remove_agent:
             return remove_agent(project, args.remove_agent)
+        if args.add_obsidian:
+            return add_obsidian(project)
 
     # Scaffold mode
     if not args.target:
