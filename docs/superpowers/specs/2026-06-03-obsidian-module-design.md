@@ -95,10 +95,10 @@ at a missing script.
 **Templates:** the 5 Obsidian note templates (`source`, `entity`, `concept`,
 `question`, `comparison`).
 
-**Scripts:** only the lightweight scripts the kept skills hard-require — likely
-`detect-transport.sh`. `wiki-lock.sh` (multi-writer locking) is dropped for a
-single-user vault unless a kept skill hard-requires it. The exact set is
-finalized during planning by grepping the kept skills for script references.
+**Scripts:** the lightweight scripts the kept skills require — `detect-transport.sh`
+and `wiki-lock.sh` (multi-writer locking is kept). The full set is finalized during
+planning by grepping the kept skills for script references and pulling in whatever
+they reference.
 
 **Vault seed:** minimal `wiki/` skeleton (`index.md`, `hot.md`, `log.md`,
 `overview.md`, and the `concepts/ entities/ sources/ questions/ comparisons/`
@@ -184,7 +184,8 @@ upstream repo, and what was / was not vendored) under `template/optional/obsidia
 ## Open questions / risks
 
 - Exact script dependency set of the kept skills — resolved during planning by
-  grepping kept skills for `scripts/` references; trim dangling opt-in references.
-- `verifier` agent uses an Obsidian-specific "six-cut" audit kernel; confirm it
-  reads sensibly in a team-ai project or trim its vault-specific assumptions.
+  grepping kept skills for `scripts/` references; trim dangling references to the
+  *dropped* opt-in features only (`wiki-lock.sh` and `detect-transport.sh` are kept).
+- `verifier` agent is vendored as-is, including its Obsidian-specific "six-cut"
+  audit kernel.
 - `settings.json` permission merge must dedupe against existing entries.
