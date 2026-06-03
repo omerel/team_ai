@@ -29,7 +29,7 @@ These decisions fill gaps the spec left open. They are binding for this plan.
 
    All five keys are supplied to **every** `render_template` call (snippet content when enabled, `""` when disabled). `string.Template.substitute` ignores keys a template doesn't reference, so spreading all five into every mapping is safe and keeps wiring uniform.
 
-5. **In-place injection uses marker comments for idempotency.** Each snippet is wrapped in `<!-- obsidian:module:start -->` / `<!-- obsidian:module:end -->`. The same marker-wrapped block is what the `$obsidian_*` variables render to at scaffold time, so scaffolded and in-place-added files contain identical blocks. `--add-obsidian` skips injection into any file that already contains the start marker.
+5. **In-place injection uses marker comments for idempotency.** Each snippet is wrapped in `<!-- obsidian:module:start -->` / `<!-- obsidian:module:end -->`. The same marker-wrapped block content is what the `$obsidian_*` variables render to at scaffold time, so scaffolded and in-place-added files contain the **identical awareness block**. The two paths differ only in *placement*: at scaffold time the block lands at the template anchor (mid-file, e.g. before `## 7. Git`), while `--add-obsidian` appends it to the end of the already-rendered file — anchor-matching rendered prose would be brittle, and end-append is the robust idempotent choice. `--add-obsidian` skips injection into any file that already contains the start marker.
 
 ---
 
