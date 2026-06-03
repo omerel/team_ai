@@ -111,6 +111,33 @@ MINIMAL_AGENTS = (
 
 REPO_ROOT = Path(__file__).resolve().parent
 TEMPLATE_DIR = REPO_ROOT / "template"
+OPTIONAL_DIR = TEMPLATE_DIR / "optional"
+OBSIDIAN_DIR = OPTIONAL_DIR / "obsidian"
+
+# Maps each $obsidian_* template variable to its snippet file under
+# template/optional/obsidian/snippets/. planner+implementer share one snippet.
+OBSIDIAN_SNIPPET_VARS = {
+    "obsidian_section": "claude-section.md",
+    "obsidian_researcher": "researcher.md",
+    "obsidian_reviewer": "reviewer.md",
+    "obsidian_note": "planner-implementer.md",
+    "obsidian_team": "team.md",
+}
+
+
+def _obsidian_vars(enabled: bool) -> dict:
+    """Return the $obsidian_* render mapping.
+
+    When enabled, each var holds its snippet's content; when disabled, "".
+    Every render_template call spreads this in so templates always resolve.
+    """
+    if not enabled:
+        return {k: "" for k in OBSIDIAN_SNIPPET_VARS}
+    snippets_dir = OBSIDIAN_DIR / "snippets"
+    return {
+        var: (snippets_dir / fname).read_text()
+        for var, fname in OBSIDIAN_SNIPPET_VARS.items()
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +204,7 @@ def _copy_dir(src: Path, dst: Path) -> None:
     shutil.copytree(src, dst)
 
 
-def scaffold_project(target: Path, minimal: bool = False, force: bool = False) -> int:
+def scaffold_project(target: Path, minimal: bool = False, force: bool = False, obsidian: bool = False) -> int:
     """Scaffold a new team-ai project at `target`.
 
     `minimal=True` skips the wizard and uses MINIMAL_AGENTS with default nicknames.
@@ -200,6 +227,8 @@ def scaffold_project(target: Path, minimal: bool = False, force: bool = False) -
     else:
         project_name, description, roster = run_wizard(target)
 
+    obsidian_vars = _obsidian_vars(obsidian)
+
     target.mkdir(parents=True, exist_ok=True)
     (target / "src").mkdir(exist_ok=True)
     (target / "resource").mkdir(exist_ok=True)
@@ -214,6 +243,7 @@ def scaffold_project(target: Path, minimal: bool = False, force: bool = False) -
         render_template(claude_tmpl, {
             "project_name": project_name,
             "description": description or "(no description provided)",
+            **obsidian_vars,
         })
     )
 
@@ -223,6 +253,7 @@ def scaffold_project(target: Path, minimal: bool = False, force: bool = False) -
         render_template(team_tmpl, {
             "project_name": project_name,
             "roster_block": _render_roster_block(roster),
+            **obsidian_vars,
         })
     )
 
@@ -256,6 +287,7 @@ def scaffold_project(target: Path, minimal: bool = False, force: bool = False) -
         rendered = render_template(tmpl_path.read_text(), {
             "nickname": nickname,
             "project_name": project_name,
+            **obsidian_vars,
         })
         (target / ".claude" / "agents" / f"{role}.md").write_text(rendered)
 
@@ -399,12 +431,14 @@ def _read_team_roster(project: Path) -> dict:
     return roster
 
 
-def _write_team_md(project: Path, project_name: str, roster: dict) -> None:
+def _write_team_md(project: Path, project_name: str, roster: dict,
+                   obsidian_vars: dict = None) -> None:
     team_tmpl = (TEMPLATE_DIR / "claude" / "team.md.tmpl").read_text()
     (project / ".claude" / "team.md").write_text(
         render_template(team_tmpl, {
             "project_name": project_name,
             "roster_block": _render_roster_block(roster),
+            **(obsidian_vars if obsidian_vars is not None else _obsidian_vars(False)),
         })
     )
 
@@ -506,6 +540,7 @@ def add_agent(project: Path, spec: str) -> int:
     rendered = render_template(tmpl_path.read_text(), {
         "nickname": nickname,
         "project_name": project_name,
+        **_obsidian_vars(False),
     })
     (project / ".claude" / "agents" / f"{role}.md").write_text(rendered)
 
