@@ -116,16 +116,15 @@ Trigger: user describes what the vault is for.
 
 Steps:
 
-1. Determine the wiki mode. Read `references/modes.md` to show the 6 options and pick the best fit.
-2. Ask: "What is this vault for?" (one question, then proceed).
-3. Create full folder structure under `wiki/` based on the mode.
-4. Create domain pages + `_index.md` sub-indexes.
-5. Create `wiki/index.md`, `wiki/log.md`, `wiki/hot.md`, `wiki/overview.md`.
-6. Create `_templates/` files for each note type.
-7. Apply visual customization. Read `references/css-snippets.md`. Create `.obsidian/snippets/vault-colors.css`.
-8. Create the vault CLAUDE.md using the template below.
-9. Initialize git. Read `references/git-setup.md`.
-10. Present the structure and ask: "Want to adjust anything before we start?"
+1. Ask: "What is this vault for?" (one question, then proceed).
+2. Use the standard vault structure: `wiki/{concepts,entities,sources,questions,comparisons}/` (already seeded for this project).
+3. Create domain pages + `_index.md` sub-indexes under those folders.
+4. Create `wiki/index.md`, `wiki/log.md`, `wiki/hot.md`, `wiki/overview.md`.
+5. Create `_templates/` files for each note type.
+6. Apply visual customization. Read `references/css-snippets.md`. Create `.obsidian/snippets/vault-colors.css`.
+7. Create the vault CLAUDE.md using the template below.
+8. Initialize git. Read `references/git-setup.md`.
+9. Present the structure and ask: "Want to adjust anything before we start?"
 
 ### Vault CLAUDE.md Template
 
