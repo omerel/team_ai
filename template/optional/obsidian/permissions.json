@@ -1,0 +1,11 @@
+{
+  "allow": [
+    "Bash(bash .claude/scripts/wiki-lock.sh:*)",
+    "Bash(bash .claude/scripts/detect-transport.sh:*)",
+    "Bash(bash .claude/scripts/setup-vault.sh:*)",
+    "Bash(.claude/scripts/wiki-lock.sh:*)",
+    "Bash(.claude/scripts/detect-transport.sh:*)",
+    "Bash(.claude/scripts/setup-vault.sh:*)",
+    "Bash(mkdir:*)"
+  ]
+}
