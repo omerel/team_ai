@@ -13,6 +13,9 @@ python3 setup.py /path/to/new-project --minimal
 
 # Overwrite an existing .claude/
 python3 setup.py /path/to/new-project --force
+
+# Include the opt-in Obsidian knowledge-vault module
+python3 setup.py /path/to/new-project --with-obsidian
 ```
 
 ## In-place operations
@@ -25,6 +28,7 @@ python3 .claude/scripts/team_setup.py --rename rocky=ricky
 python3 .claude/scripts/team_setup.py --add-agent backend-specialist
 python3 .claude/scripts/team_setup.py --add-agent backend-specialist=rocky
 python3 .claude/scripts/team_setup.py --remove-agent rocky
+python3 .claude/scripts/team_setup.py --add-obsidian
 ```
 
 ## Sprint workflow (in a generated project)
@@ -80,6 +84,55 @@ The template vendors 12 superpowers skills into `.claude/skills/`:
 
 The template also bundles one custom project skill, `using-git`, which defines the
 commit-attribution convention agents follow.
+
+## Obsidian knowledge-vault module (opt-in)
+
+An opt-in module adds an Obsidian-backed **knowledge vault** at `wiki/` — the
+team's shared, durable memory — plus the skills, agents, commands, and hooks that
+operate it. It is **off by default**; without it, a scaffolded project is
+byte-for-byte identical to today.
+
+Enable it at scaffold time with `--with-obsidian` (the interactive wizard also
+asks a yes/no question, default no), or add it to an existing project in place:
+
+```bash
+# at scaffold time
+python3 setup.py /path/to/new-project --with-obsidian
+
+# in place, on an already-scaffolded project (idempotent)
+python3 .claude/scripts/team_setup.py --add-obsidian
+```
+
+When enabled, the module adds:
+
+- **Skills / commands:** `/wiki` (ingest a source, query, lint), `/save` (persist
+  a note or sprint closeout), `/canvas` (visual board) — plus `defuddle`, `think`,
+  `obsidian-markdown`, `obsidian-bases`.
+- **Agents:** `verifier`, `wiki-ingest`, `wiki-lint`.
+- **Vault seed:** a ready-to-use `wiki/` skeleton (`index.md`, `hot.md`, `log.md`,
+  `overview.md` and the `concepts/ entities/ sources/ questions/ comparisons/`
+  folders) — usable immediately, no Obsidian desktop app required.
+- **Hooks** (merged into `.claude/settings.json`): load `wiki/hot.md` on session
+  start, reload it after context compaction, and prompt to update it when the
+  vault changed. There is **no** auto-commit hook — the vault is committed through
+  the normal sprint-branch + `@<nickname>:` flow like any other change.
+- **Permissions** for the vault scripts, and `.vault-meta/` (runtime locks/caches)
+  added to the project `.gitignore`.
+
+The generated team becomes vault-aware: the Researcher ingests/queries the vault,
+the Reviewer `/save`s sprint closeouts into it, and the Planner/Implementer check
+it for prior decisions before starting.
+
+If you have the Obsidian desktop app, run the optional setup script once to wire
+up the app's vault config:
+
+```bash
+.claude/scripts/setup-vault.sh
+```
+
+The module is a curated subset of the MIT-licensed `claude-obsidian` project; see
+`template/optional/obsidian/ATTRIBUTION.md` for provenance and exactly what was
+and was not vendored.
 
 ## Manual smoke test (run before tagging a release)
 
