@@ -2,6 +2,7 @@ import unittest
 import tempfile
 import shutil
 import sys
+import json
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -28,6 +29,65 @@ class TestObsidianDisabledDefault(unittest.TestCase):
         self.assertFalse((self.target / "wiki").exists(), "wiki/ must not exist when disabled")
         self.assertFalse((self.target / ".claude" / "skills" / "wiki").exists())
         self.assertFalse((self.target / ".claude" / "commands" / "wiki.md").exists())
+
+
+class TestObsidianEnabled(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.target = self.tmp / "proj"
+        scaffold_project(self.target, minimal=True, force=False, obsidian=True)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_skills_commands_agents_present(self):
+        c = self.target / ".claude"
+        for skill in ("wiki", "wiki-ingest", "wiki-query", "wiki-lint", "save",
+                      "canvas", "defuddle", "think", "obsidian-markdown",
+                      "obsidian-bases"):
+            self.assertTrue((c / "skills" / skill / "SKILL.md").is_file(),
+                            f"missing skill {skill}")
+        for cmd in ("wiki", "save", "canvas"):
+            self.assertTrue((c / "commands" / f"{cmd}.md").is_file(),
+                            f"missing command {cmd}")
+        for agent in ("verifier", "wiki-ingest", "wiki-lint"):
+            self.assertTrue((c / "agents" / f"{agent}.md").is_file(),
+                            f"missing agent {agent}")
+
+    def test_scripts_and_templates_present(self):
+        c = self.target / ".claude"
+        for s in ("detect-transport.sh", "wiki-lock.sh", "setup-vault.sh"):
+            self.assertTrue((c / "scripts" / s).is_file(), f"missing script {s}")
+        for t in ("source", "entity", "concept", "question", "comparison"):
+            self.assertTrue((c / "templates" / f"{t}.md").is_file(),
+                            f"missing template {t}")
+
+    def test_wiki_seed_at_project_root(self):
+        w = self.target / "wiki"
+        for f in ("index.md", "hot.md", "log.md", "overview.md"):
+            self.assertTrue((w / f).is_file(), f"missing wiki/{f}")
+        for d in ("concepts", "entities", "sources", "questions", "comparisons"):
+            self.assertTrue((w / d).is_dir(), f"missing wiki/{d}/")
+
+    def test_claude_md_has_vault_section(self):
+        text = (self.target / "CLAUDE.md").read_text()
+        self.assertIn("Knowledge Vault", text)
+        self.assertIn("/wiki", text)
+        self.assertNotIn("$obsidian_", text)
+
+    def test_settings_has_extra_permissions_and_hooks_no_autocommit(self):
+        settings = json.loads((self.target / ".claude" / "settings.json").read_text())
+        allow = settings["permissions"]["allow"]
+        self.assertIn("Bash(.claude/scripts/wiki-lock.sh:*)", allow)
+        self.assertIn("Read", allow)  # original permissions preserved
+        hooks = settings["hooks"]
+        self.assertEqual(set(hooks), {"SessionStart", "PostCompact", "Stop"})
+        self.assertNotIn("PostToolUse", hooks)
+        self.assertNotIn("auto-commit", json.dumps(hooks))
+
+    def test_gitignore_has_vault_meta(self):
+        gi = (self.target / ".gitignore").read_text()
+        self.assertIn(".vault-meta/", gi)
 
 
 if __name__ == "__main__":

@@ -28,13 +28,15 @@ class TestWizard(unittest.TestCase):
     def test_collects_minimal_answers_uses_defaults(self):
         answers = [""]
         answers += [""]
+        answers.append("n")  # obsidian module: no
         for _ in range(10):
             answers.append("n")
         answers += ["", ""]
         answers.append("y")
         self._scripted_input(answers)
         with redirect_stdout(StringIO()):
-            project_name, description, roster = run_wizard(self.target)
+            project_name, description, roster, obsidian = run_wizard(self.target)
+        self.assertFalse(obsidian)
         self.assertEqual(project_name, "myproject")
         self.assertEqual(description, "")
         self.assertEqual(set(roster.keys()), {"planner", "reviewer"})
@@ -43,19 +45,21 @@ class TestWizard(unittest.TestCase):
 
     def test_custom_nicknames_collected(self):
         answers = ["MyApp", "a cool app"]
+        answers.append("n")  # obsidian module: no
         for _ in range(10):
             answers.append("n")
         answers += ["paula", "robin"]
         answers.append("y")
         self._scripted_input(answers)
         with redirect_stdout(StringIO()):
-            project_name, description, roster = run_wizard(self.target)
+            project_name, description, roster, _ = run_wizard(self.target)
         self.assertEqual(project_name, "MyApp")
         self.assertEqual(description, "a cool app")
         self.assertEqual(roster, {"planner": "paula", "reviewer": "robin"})
 
     def test_rejects_invalid_nickname_then_accepts_valid(self):
         answers = ["", ""]
+        answers.append("n")  # obsidian module: no
         for _ in range(10):
             answers.append("n")
         answers += ["Paula", "paula"]
@@ -63,11 +67,12 @@ class TestWizard(unittest.TestCase):
         answers.append("y")
         self._scripted_input(answers)
         with redirect_stdout(StringIO()):
-            _, _, roster = run_wizard(self.target)
+            _, _, roster, _ = run_wizard(self.target)
         self.assertEqual(roster["planner"], "paula")
 
     def test_full_roster_when_user_says_yes(self):
         answers = ["", ""]
+        answers.append("n")  # obsidian module: no
         for _ in range(10):
             answers.append("y")
         for _ in range(12):
@@ -75,7 +80,7 @@ class TestWizard(unittest.TestCase):
         answers.append("y")
         self._scripted_input(answers)
         with redirect_stdout(StringIO()):
-            _, _, roster = run_wizard(self.target)
+            _, _, roster, _ = run_wizard(self.target)
         self.assertEqual(len(roster), 12)
 
 

@@ -79,6 +79,7 @@ def render_template(text: str, mapping: dict) -> str:
 
 
 import argparse
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -140,6 +141,82 @@ def _obsidian_vars(enabled: bool) -> dict:
     }
 
 
+def _merge_settings_json(settings_path: Path) -> None:
+    """Merge obsidian permissions + hooks into an existing settings.json.
+
+    Dedupes permission entries against what's already present and adds the
+    three kept hooks. Idempotent.
+    """
+    settings = json.loads(settings_path.read_text())
+
+    extra = json.loads((OBSIDIAN_DIR / "permissions.json").read_text())
+    allow = settings.setdefault("permissions", {}).setdefault("allow", [])
+    for entry in extra.get("allow", []):
+        if entry not in allow:
+            allow.append(entry)
+
+    hooks_def = json.loads((OBSIDIAN_DIR / "hooks" / "hooks.json").read_text())
+    settings["hooks"] = hooks_def["hooks"]  # kept hooks only; replaces any prior
+
+    settings_path.write_text(json.dumps(settings, indent=2) + "\n")
+
+
+def apply_obsidian_module(target: Path) -> None:
+    """Merge the Obsidian module into a target .claude/ + project root.
+
+    1. Merge skills/ agents/ commands/ scripts/ templates/ into .claude/.
+    2. Drop wiki-seed/ as wiki/ at the project root.
+    3. Merge permissions + hooks into .claude/settings.json.
+    4. Add .vault-meta/ to the project .gitignore.
+
+    Idempotent: re-running overwrites module files and re-dedupes settings.
+    """
+    claude = target / ".claude"
+
+    # 1. Merge per-item trees into .claude/ (preserve existing siblings).
+    for sub in ("skills", "agents", "commands", "scripts", "templates"):
+        src = OBSIDIAN_DIR / sub
+        dst = claude / sub
+        dst.mkdir(parents=True, exist_ok=True)
+        for item in src.iterdir():
+            target_item = dst / item.name
+            if item.is_dir():
+                if target_item.exists():
+                    shutil.rmtree(target_item)
+                shutil.copytree(item, target_item)
+            else:
+                shutil.copy(item, target_item)
+        if sub == "scripts":
+            for sh in dst.glob("*.sh"):
+                sh.chmod(0o755)
+
+    # 2. Drop the wiki seed at the project root.
+    wiki_dst = target / "wiki"
+    src_seed = OBSIDIAN_DIR / "wiki-seed"
+    for item in src_seed.rglob("*"):
+        rel = item.relative_to(src_seed)
+        out = wiki_dst / rel
+        if item.is_dir():
+            out.mkdir(parents=True, exist_ok=True)
+        elif item.name == ".gitkeep":
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text("")
+        else:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(item, out)
+
+    # 3. Merge settings.json.
+    _merge_settings_json(claude / "settings.json")
+
+    # 4. Add .vault-meta/ to the project .gitignore.
+    gitignore = target / ".gitignore"
+    existing = gitignore.read_text() if gitignore.exists() else ""
+    if ".vault-meta/" not in existing:
+        prefix = "" if existing.endswith("\n") or not existing else "\n"
+        addition = "\n# Obsidian vault runtime artifacts\n.vault-meta/\n"
+        gitignore.write_text(existing + prefix + addition)
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -152,6 +229,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("target", nargs="?", help="Target project directory (for scaffold mode)")
     p.add_argument("--minimal", action="store_true", help="Non-interactive scaffold with defaults")
     p.add_argument("--force", action="store_true", help="Overwrite an existing .claude/")
+    p.add_argument("--with-obsidian", action="store_true",
+                   help="Include the opt-in Obsidian knowledge-vault module")
     # In-place ops (run from inside a generated project; require a target with .claude/team.md)
     p.add_argument("--list-team", action="store_true", help="Print the team roster")
     p.add_argument("--rename", metavar="OLD=NEW", help="Rename an agent nickname")
@@ -181,7 +260,8 @@ def main(argv=None) -> int:
     if not args.target:
         parser.error("target directory is required for scaffold mode")
     target = Path(args.target).resolve()
-    return scaffold_project(target, minimal=args.minimal, force=args.force)
+    return scaffold_project(target, minimal=args.minimal, force=args.force,
+                            obsidian=args.with_obsidian)
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +305,8 @@ def scaffold_project(target: Path, minimal: bool = False, force: bool = False, o
         description = ""
         roster = {role: AGENTS[role][1] for role in MINIMAL_AGENTS}
     else:
-        project_name, description, roster = run_wizard(target)
+        project_name, description, roster, wiz_obsidian = run_wizard(target)
+        obsidian = obsidian or wiz_obsidian
 
     obsidian_vars = _obsidian_vars(obsidian)
 
@@ -309,13 +390,25 @@ def scaffold_project(target: Path, minimal: bool = False, force: bool = False, o
     template_dst = target / ".claude" / "scripts" / "template"
     if template_dst.exists():
         shutil.rmtree(template_dst)
-    shutil.copytree(
-        TEMPLATE_DIR, template_dst,
-        ignore=shutil.ignore_patterns("skills", "scripts"),
-    )
+
+    def _bundle_ignore(dir_path, names):
+        # Strip only template/claude/skills and template/claude/scripts;
+        # keep everything under template/optional/.
+        dp = Path(dir_path)
+        if dp.name == "claude" and dp.parent == TEMPLATE_DIR:
+            return {n for n in names if n in ("skills", "scripts")}
+        return set()
+
+    shutil.copytree(TEMPLATE_DIR, template_dst, ignore=_bundle_ignore)
+
+    if obsidian:
+        apply_obsidian_module(target)
 
     print(f"✓ Project scaffolded at {target}")
     print("  Next: drop knowledge into resource/, then run /sprint-start \"<goal>\"")
+    if obsidian:
+        print("  Obsidian module added — run "
+              "`.claude/scripts/setup-vault.sh` to wire up the Obsidian app.")
     return 0
 
 
@@ -350,7 +443,10 @@ def _ask_nickname(role: str, default: str, existing: set) -> str:
 
 
 def run_wizard(target: Path):
-    """Interactive wizard. Returns (project_name, description, roster_dict)."""
+    """Interactive wizard.
+
+    Returns (project_name, description, roster_dict, obsidian).
+    """
     print()
     print("=" * 60)
     print(" Team-AI scaffolder — interactive setup")
@@ -359,6 +455,9 @@ def run_wizard(target: Path):
 
     project_name = _ask("Project name", default=target.name)
     description = _ask("One-line description", default="")
+
+    obsidian = _ask_yes_no(
+        "Include the Obsidian knowledge-vault module?", default_no=True)
 
     print()
     print("Specialist selection — pick which agents to install.")
@@ -395,7 +494,7 @@ def run_wizard(target: Path):
         print("Aborted.")
         sys.exit(1)
 
-    return project_name, description, roster
+    return project_name, description, roster, obsidian
 
 
 def _require_project(project: Path) -> Path:
