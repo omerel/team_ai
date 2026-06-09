@@ -44,7 +44,7 @@ class TestObsidianEnabled(unittest.TestCase):
         c = self.target / ".claude"
         for skill in ("wiki", "wiki-ingest", "wiki-query", "wiki-lint", "save",
                       "canvas", "defuddle", "think", "obsidian-markdown",
-                      "obsidian-bases"):
+                      "obsidian-bases", "autoresearch"):
             self.assertTrue((c / "skills" / skill / "SKILL.md").is_file(),
                             f"missing skill {skill}")
         for cmd in ("wiki", "save", "canvas"):
@@ -68,6 +68,11 @@ class TestObsidianEnabled(unittest.TestCase):
             self.assertTrue((w / f).is_file(), f"missing wiki/{f}")
         for d in ("concepts", "entities", "sources", "questions", "comparisons"):
             self.assertTrue((w / d).is_dir(), f"missing wiki/{d}/")
+
+    def test_program_md_in_wiki(self):
+        self.assertTrue(
+            (self.target / "wiki" / "references" / "program.md").is_file(),
+            "missing wiki/references/program.md")
 
     def test_claude_md_has_vault_section(self):
         text = (self.target / "CLAUDE.md").read_text()

@@ -10,7 +10,7 @@ is a curated subset of the **claude-obsidian** project.
 ## What was vendored
 
 - Skills: `wiki`, `wiki-ingest`, `wiki-query`, `wiki-lint`, `save`, `canvas`,
-  `defuddle`, `think`, `obsidian-markdown`, `obsidian-bases`
+  `defuddle`, `think`, `obsidian-markdown`, `obsidian-bases`, `autoresearch`
 - Agents: `verifier`, `wiki-ingest`, `wiki-lint`
 - Commands: `/wiki`, `/save`, `/canvas`
 - Hooks: `SessionStart`, `PostCompact`, `Stop` (load/reload `hot.md` + lock hygiene)
@@ -22,7 +22,7 @@ is a curated subset of the **claude-obsidian** project.
 
 - The retrieval pipeline (`wiki-retrieve`: BM25 / rerank / contextual-prefix)
 - The `wiki-cli` transport layer, `wiki-mode` methodology modes
-- `wiki-fold` / DragonScale, `autoresearch`
+- `wiki-fold` / DragonScale
 - The `PostToolUse` auto-commit hook (team-ai commits the vault through its
   normal sprint-branch + `@<nickname>:` flow instead)
 - Benchmark/test harness, ollama integration, any API-egress paths

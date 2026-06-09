@@ -9,6 +9,7 @@ re-reading raw `resource/` files.
 - `/wiki` — route a knowledge operation (ingest a source, query, lint).
 - `/save` — persist a note or a sprint closeout into the vault.
 - `/canvas` — build a visual board of linked pages.
+- `/autoresearch` — autonomous multi-round research loop; findings filed directly into the vault.
 
 Vault pages under `wiki/` are tracked and committed through the normal sprint
 flow: `@<nickname>:` commit subjects on the `sprint/<slug>` branch (see the
